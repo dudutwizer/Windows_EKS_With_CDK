@@ -6,6 +6,7 @@ from windows_eks_with_cdk.windows_eks_with_cdk_stack import WindowsEksWithCdkSta
 
 
 app = core.App()
-WindowsEksWithCdkStack(app, "windows-eks-with-cdk")
+
+WindowsEksWithCdkStack(app, id="windows-eks-with-cdk", domain_name="eks-domain.aws")
 
 app.synth()
