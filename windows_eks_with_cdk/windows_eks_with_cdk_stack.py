@@ -3,6 +3,8 @@ import aws_cdk.aws_ec2 as ec2
 import aws_cdk.aws_secretsmanager as secretsmanager
 import aws_cdk.aws_directoryservice as mad
 import aws_cdk.aws_fsx as fsx
+import aws_cdk.aws_eks as eks
+import aws_cdk.aws_iam as iam
 import json
 
 class WindowsEksWithCdkStack(core.Stack):
@@ -78,3 +80,41 @@ class WindowsEksWithCdkStack(core.Stack):
 
         ## To-add here 
         ## ---EKS Workers
+        windows_ami = ec2.MachineImage.latest_windows(version=ec2.WindowsVersion.WINDOWS_SERVER_2019_ENGLISH_FULL_BASE)
+
+        eks_role = iam.Role(self, "eksadmin", assumed_by=iam.ServicePrincipal(service='ec2.amazonaws.com'),
+            role_name='eks-cluster-role',
+            managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AdministratorAccess')])
+
+        eks_instance_profile = iam.CfnInstanceProfile(self, 'instanceprofile',
+                                                      roles=[eks_role.role_name],
+                                                      instance_profile_name='eks-cluster-role')
+
+        cluster = eks.Cluster(self, 'eks_cluster', cluster_name='eks-demo-cluster',
+                              version=eks.KubernetesVersion.V1_18,
+                              vpc=vpc,
+                              vpc_subnets=[ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE)],
+                              default_capacity=0,
+                              masters_role=eks_role)
+
+        ng_node_role = iam.Role(self, "node-role", assumed_by=iam.ServicePrincipal(service='ec2.amazonaws.com'),
+            role_name='eks-node-role',
+            managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AmazonSSMManagedInstanceCore'),
+            iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AmazonEKSWorkerNodePolicy'),
+            iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AmazonEC2ContainerRegistryReadOnly'),
+            iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AmazonEKS_CNI_Policy'),
+            iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AmazonSSMDirectoryServiceAccess'),
+            iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AWSKeyManagementServicePowerUser')]
+            )
+
+        nodegroup = cluster.add_nodegroup_capacity('eks-nodegroup',
+                                                   instance_type=ec2.InstanceType('t2.large'),
+                                                   disk_size=50,
+                                                   min_size=2,
+                                                   max_size=2,
+                                                   desired_size=2,
+                                                   subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE),
+                                                   node_role=ng_node_role,
+                                                   remote_access=eks.NodegroupRemoteAccess(
+                                                       ssh_key_name='Ireland_kp')
+                                                    )

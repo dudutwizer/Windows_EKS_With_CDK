@@ -4,3 +4,4 @@ aws_cdk.aws_rds
 aws_cdk.aws_directoryservice
 simplejson
 aws_cdk.aws_fsx
+aws_cdk.aws_eks
