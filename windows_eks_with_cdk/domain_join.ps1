@@ -1,7 +1,7 @@
 <powershell>
 ## Script from https://aws.amazon.com/blogs/compute/managing-domain-membership-of-dynamic-fleet-of-ec2-instances/
 # Script parameters
-[string]$SecretAD = "prod/AD"
+[string]$SecretAD = "ManagedAD-Admin-Password"
 ​
 class Logger {
 	#----------------------------------------------
