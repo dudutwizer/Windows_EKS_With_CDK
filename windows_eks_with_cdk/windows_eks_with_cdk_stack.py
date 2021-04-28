@@ -7,6 +7,9 @@ import aws_cdk.aws_eks as eks
 import aws_cdk.aws_iam as iam
 import json
 
+with open("windows_eks_with_cdk_stack.ps1") as f:
+    user_data = f.read()
+
 class WindowsEksWithCdkStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str,domain_name: str, **kwargs) -> None:
@@ -37,11 +40,11 @@ class WindowsEksWithCdkStack(core.Stack):
         domain_secret_manager_object = secretsmanager.Secret(self,id="SecretObjectForMAD",
                                             generate_secret_string=secretsmanager.SecretStringGenerator(
                                                 secret_string_template=json.dumps({'Domain': domain_name, 'UserID': 'Admin'}),
-                                                generate_string_key='password',
+                                                generate_string_key='Password',
                                                 exclude_punctuation=True,
                                             ),secret_name="ManagedAD-Admin-Password")
         
-        domain_clear_text_secret = domain_secret_manager_object.secret_value_from_json('password').to_string()
+        domain_clear_text_secret = domain_secret_manager_object.secret_value_from_json('Password').to_string()
         
         mad_object = mad.CfnMicrosoftAD(self,'MAD',
                                         name=domain_name,
@@ -108,7 +111,8 @@ class WindowsEksWithCdkStack(core.Stack):
             )
 
         eks_optimized = ec2.LookupMachineImageProps(name="*2019-English-Full-EKS_Optimized*")
-        # eks_optimized.user_data = ""
+        eks_optimized.user_data = user_data
+
         if eks_optimized:
             nodegroup = cluster.add_nodegroup_capacity('eks-nodegroup',
                                                     instance_type=ec2.InstanceType('t2.large'),
