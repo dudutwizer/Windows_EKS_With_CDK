@@ -7,7 +7,7 @@ import aws_cdk.aws_eks as eks
 import aws_cdk.aws_iam as iam
 import json
 
-with open("windows_eks_with_cdk_stack.ps1") as f:
+with open("./UserData/windows_eks_with_cdk_stack.ps1") as f:
     user_data = f.read()
 
 class WindowsEksWithCdkStack(core.Stack):
@@ -110,8 +110,8 @@ class WindowsEksWithCdkStack(core.Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AWSKeyManagementServicePowerUser')]
             )
 
-        eks_optimized = ec2.LookupMachineImageProps(name="*2019-English-Full-EKS_Optimized*")
-        eks_optimized.user_data = user_data
+        eks_optimized = ec2.LookupMachineImageProps(name="*2019-English-Full-EKS_Optimized*").name
+        # eks_optimized.user_data = user_data
 
         if eks_optimized:
             nodegroup = cluster.add_nodegroup_capacity('eks-nodegroup',
@@ -122,7 +122,7 @@ class WindowsEksWithCdkStack(core.Stack):
                                                     desired_size=2,
                                                     subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE),
                                                     node_role=ng_node_role,
-                                                    ami_type=eks_optimized,
+                                                    ami_type=ec2.LookupMachineImageProps(name="*2019-English-Full-EKS_Optimized*"),
                                                     remote_access=eks.NodegroupRemoteAccess(
                                                         ssh_key_name='Ireland_kp')
                                                         )
