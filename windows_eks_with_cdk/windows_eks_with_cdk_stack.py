@@ -107,14 +107,21 @@ class WindowsEksWithCdkStack(core.Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AWSKeyManagementServicePowerUser')]
             )
 
-        nodegroup = cluster.add_nodegroup_capacity('eks-nodegroup',
-                                                   instance_type=ec2.InstanceType('t2.large'),
-                                                   disk_size=50,
-                                                   min_size=2,
-                                                   max_size=2,
-                                                   desired_size=2,
-                                                   subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE),
-                                                   node_role=ng_node_role,
-                                                   remote_access=eks.NodegroupRemoteAccess(
-                                                       ssh_key_name='Ireland_kp')
-                                                    )
+        eks_optimized = ec2.LookupMachineImageProps(name="*2019-English-Full-EKS_Optimized*")
+        # eks_optimized.user_data = ""
+        if eks_optimized:
+            nodegroup = cluster.add_nodegroup_capacity('eks-nodegroup',
+                                                    instance_type=ec2.InstanceType('t2.large'),
+                                                    disk_size=50,
+                                                    min_size=2,
+                                                    max_size=2,
+                                                    desired_size=2,
+                                                    subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE),
+                                                    node_role=ng_node_role,
+                                                    ami_type=eks_optimized,
+                                                    remote_access=eks.NodegroupRemoteAccess(
+                                                        ssh_key_name='Ireland_kp')
+                                                        )
+
+        ## domain join using state manager
+        
