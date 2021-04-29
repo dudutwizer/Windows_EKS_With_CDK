@@ -5,3 +5,5 @@ aws_cdk.aws_directoryservice
 simplejson
 aws_cdk.aws_fsx
 aws_cdk.aws_eks
+aws_cdk.aws_autoscaling
+aws_cdk.aws_elasticloadbalancingv2

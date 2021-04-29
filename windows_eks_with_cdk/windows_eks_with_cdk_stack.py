@@ -7,7 +7,7 @@ import aws_cdk.aws_eks as eks
 import aws_cdk.aws_iam as iam
 import json
 
-with open("windows_eks_with_cdk_stack.ps1") as f:
+with open("./user_data/domain_join.ps1") as f:
     user_data = f.read()
 
 class WindowsEksWithCdkStack(core.Stack):
@@ -110,22 +110,16 @@ class WindowsEksWithCdkStack(core.Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name(managed_policy_name='AWSKeyManagementServicePowerUser')]
             )
 
-        eks_optimized = ec2.LookupMachineImageProps(name="*2019-English-Full-EKS_Optimized*")
-        eks_optimized.user_data = user_data
+        self.role = iam.Role(self, id+'ec2-role',assumed_by=iam.ServicePrincipal('ec2.amazonaws.com'))
+        self.role.add_managed_policy(policy=iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'))
 
-        if eks_optimized:
-            nodegroup = cluster.add_nodegroup_capacity('eks-nodegroup',
-                                                    instance_type=ec2.InstanceType('t2.large'),
-                                                    disk_size=50,
-                                                    min_size=2,
-                                                    max_size=2,
-                                                    desired_size=2,
-                                                    subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE),
-                                                    node_role=ng_node_role,
-                                                    ami_type=eks_optimized,
-                                                    remote_access=eks.NodegroupRemoteAccess(
-                                                        ssh_key_name='Ireland_kp')
-                                                        )
+        launchTemplate = ec2.CfnLaunchTemplate(self, id="WindowsLaunchTemplate", launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+            image_id="ami-0d19cea1da6d2f277", # https://console.aws.amazon.com/systems-manager/parameters/%252Faws%252Fservice%252Fami-windows-latest%252FWindows_Server-2019-English-Full-EKS_Optimized-1.19%252Fimage_id/description?region=us-east-2
+            instance_type="t2.large",
+            user_data=user_data,
+            key_name="Ireland_kp"))
 
+        cluster.add_nodegroup_capacity("extra-ng", launch_template_spec=eks.LaunchTemplateSpec(id=launchTemplate.ref, version=launchTemplate.attr_latest_version_number))
+                                        
         ## domain join using state manager
         
