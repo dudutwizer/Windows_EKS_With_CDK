@@ -116,7 +116,7 @@ class WindowsEksWithCdkStack(core.Stack):
         launchTemplate = ec2.CfnLaunchTemplate(self, id="WindowsLaunchTemplate", launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
             image_id="ami-0d19cea1da6d2f277", # https://console.aws.amazon.com/systems-manager/parameters/%252Faws%252Fservice%252Fami-windows-latest%252FWindows_Server-2019-English-Full-EKS_Optimized-1.19%252Fimage_id/description?region=us-east-2
             instance_type="t2.large",
-            user_data=user_data,
+            user_data=core.Fn.base64(user_data),
             key_name="Ireland_kp"))
 
         cluster.add_nodegroup_capacity("extra-ng", launch_template_spec=eks.LaunchTemplateSpec(id=launchTemplate.ref, version=launchTemplate.attr_latest_version_number))
