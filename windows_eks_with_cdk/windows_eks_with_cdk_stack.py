@@ -121,5 +121,11 @@ class WindowsEksWithCdkStack(core.Stack):
 
         cluster.add_nodegroup_capacity("extra-ng", launch_template_spec=eks.LaunchTemplateSpec(id=launchTemplate.ref, version=launchTemplate.attr_latest_version_number))
                                         
-        ## domain join using state manager
-        
+        # To add:
+        # [ ] LaunchTemplate IAM role
+        # [ ] Cluster capacity size? or maybe it is set by kubectl
+        # 
+        # To check
+        # [ ] Domain join should now work
+        # [ ] EKS should have the Lt
+        # [ ] How to get the AMI id per region with CfnLaunchTemplate and not as hardcoded value         
