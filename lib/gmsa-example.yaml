@@ -1,0 +1,20 @@
+apiVersion: windows.k8s.io/v1alpha1
+kind: GMSACredentialSpec
+metadata:
+  name: gmsawebapp01
+credspec:
+  CmsPlugins:
+  - ActiveDirectory
+  DomainJoinConfig:
+    Sid: S-1-5-21-3900831811-866262038-1815247466
+    MachineAccountName: WebApp01
+    Guid: 89756e9a-72d4-46bb-bdbc-697217ea8331
+    DnsTreeName: windowsoneks.aws
+    DnsName: windowsoneks.aws
+    NetBiosName: windowsoneks
+  ActiveDirectoryConfig:
+    GroupManagedServiceAccounts:
+    - Name: WebApp01
+      Scope: windowsoneks.aws
+    - Name: WebApp01
+      Scope: windowsoneks

@@ -1,12 +1,11 @@
 {
-  "availability-zones:account=075808977365:region=eu-west-1": [
-    "eu-west-1a",
-    "eu-west-1b",
-    "eu-west-1c"
+  "availability-zones:account=322088831639:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
   ],
-  "availability-zones:account=117923233529:region=us-east-2": [
-    "us-east-2a",
-    "us-east-2b",
-    "us-east-2c"
-  ]
+  "ami:account=322088831639:filters.image-type.0=machine:filters.name.0=*Windows_Server-2019-English-Full-EKS_Optimized-1.20*:filters.platform.0=windows:filters.state.0=available:region=us-east-1": "ami-0fe4209681624dbc2"
 }
