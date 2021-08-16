@@ -89,30 +89,30 @@ const Worker = new WindowsWorker(this, 'WindowsWorker',{
 
 ```yaml 
 spec:
-	securityContext:
-	windowsOptions:
-		gmsaCredentialSpecName: gmsawebapp01
-	containers:
-	- name: windows-server-iis
-	image: mcr.microsoft.com/windows/servercore/iis
-	ports:
-	- name: http
-		containerPort: 80
-	imagePullPolicy: IfNotPresent
-	command:
-	- powershell.exe
-	- -command
-	- "Invoke-WebRequest -UseBasicParsing -Uri 'https://dotnetbinaries.blob.core.windows.net/servicemonitor/2.0.1.6/ServiceMonitor.exe' -OutFile 'C:\\ServiceMonitor.exe'; Invoke-WebRequest -UseBasicParsing -Uri 'http://media.corporate-ir.net/media_files/IROL/17/176060/Oct18/Amazon%20logo.PNG' -OutFile 'c:\\folderInsidePod\\amazon.png'; echo '<html><body><br/><br/><marquee><H1>Hello EKS with Amazon FSx and Managed AD!!!</H1></marquee></body></html>' > C:\\inetpub\\wwwroot\\index.html; C:\\ServiceMonitor.exe 'w3svc';"
-	volumeMounts:
-		- mountPath: c:\folderInsidePod
-		name: testmount
-	volumes:
-	- name: testmount
-		hostPath: 
-		path: G:\folder1
-		type: Directory
-	nodeSelector:
-	kubernetes.io/os: windows
+ securityContext:
+  windowsOptions:
+   gmsaCredentialSpecName: gmsawebapp01
+ containers:
+ - name: windows-server-iis
+   image: mcr.microsoft.com/windows/servercore/iis
+   ports:
+   - name: http
+     containerPort: 80
+   imagePullPolicy: IfNotPresent
+   command:
+   - powershell.exe
+   - -command
+   - "Invoke-WebRequest -UseBasicParsing -Uri 'https://dotnetbinaries.blob.core.windows.net/servicemonitor/2.0.1.6/ServiceMonitor.exe' -OutFile 'C:\\ServiceMonitor.exe'; Invoke-WebRequest -UseBasicParsing -Uri 'http://media.corporate-ir.net/media_files/IROL/17/176060/Oct18/Amazon%20logo.PNG' -OutFile 'c:\\folderInsidePod\\amazon.png'; echo '<html><body><br/><br/><marquee><H1>Hello EKS with Amazon FSx and Managed AD!!!</H1></marquee></body></html>' > C:\\inetpub\\wwwroot\\index.html; C:\\ServiceMonitor.exe 'w3svc';"
+  volumeMounts:
+   - mountPath: c:\folderInsidePod
+     name: testmount
+ volumes:
+  - name: testmount
+    hostPath: 
+     path: G:\folder1
+     type: Directory
+ nodeSelector:
+  kubernetes.io/os: windows
 ```
 [See full Yaml](lib/hello-iis/windows_server_iis.yaml)
 
