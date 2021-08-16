@@ -3,6 +3,14 @@
 *.d.ts
 node_modules
 
-# CDK asset staging directory
-.cdk.staging
-cdk.out
+# CDK Context & Staging files
+cdk.context.json
+.cdk.staging/
+cdk.out/
+*.tabl.json
+
+# VSCode 
+.vscode
+
+# Local state files & OS specifics
+.DS_Store
