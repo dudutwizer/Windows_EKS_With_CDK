@@ -33,7 +33,6 @@ spec:
         volumeMounts:
           - mountPath: c:\folderInsidePod
             name: testmount
-      dnsPolicy: ClusterFirst
       volumes:
         - name: testmount
           hostPath: 

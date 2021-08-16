@@ -23,7 +23,7 @@ cdk deploy
 
 ## CDK Constructs 
 
-**VpcMad**
+### **VpcMad**
 
 This construct creates Amazon VPC, Amazon Managed AD, Secret for the domain Admin stored in Secrets Manager and Route 53 forward rule for the domain.
 
@@ -35,7 +35,7 @@ Example:
 const vpc_infrasracture = new VpcMad(this, "Main-Infra", { domain_name: "windowseks.aws"});
 ```
 
-**WindowsFSxMad**
+### **WindowsFSxMad**
 
 This construct extends the VpcMad to allow FSx integration.
 
@@ -51,7 +51,7 @@ const vpc_infrasracture = new WindowsFSxMad(this, "Main-Infra", {
 });
 ```
 
-**WindowsEKSCluster** 
+### **WindowsEKSCluster** 
 
 This stack take the WindowsFSxMad stack as input and creates the EKS cluster with permissions to operate EKS clusters.
 
@@ -61,7 +61,7 @@ Example:
 const eks_infra = new WindowsEKSCluster(this, 'EKS-Infra',vpc_infrasracture);
 ```
 
-**WindowsEKSNodes**
+### **WindowsEKSNodes**
 
 The stack creates the Windows Autoscaling group with domain join script and the SSM Documents for gMSA and Global Mapping.
 
@@ -73,7 +73,7 @@ const eks_nodes = new WindowsEKSNodes(this, 'EKS-Nodes',
 	eks_infra);
 ```
 
-**WindowsWorker**
+### **WindowsWorker**
 
 The stack creates Windows Server with the latest AMI and joined the machine to the domain. It is possible to send Powershell commands or connect and work from the machine. 
 
@@ -85,7 +85,45 @@ const Worker = new WindowsWorker(this, 'WindowsWorker',{
 	madObject: vpc_infrasracture.ad);
 ```
 
-# Automation
+## Deployment file for the application
+
+```yaml 
+spec:
+	securityContext:
+	windowsOptions:
+		gmsaCredentialSpecName: gmsawebapp01
+	containers:
+	- name: windows-server-iis
+	image: mcr.microsoft.com/windows/servercore/iis
+	ports:
+	- name: http
+		containerPort: 80
+	imagePullPolicy: IfNotPresent
+	command:
+	- powershell.exe
+	- -command
+	- "Invoke-WebRequest -UseBasicParsing -Uri 'https://dotnetbinaries.blob.core.windows.net/servicemonitor/2.0.1.6/ServiceMonitor.exe' -OutFile 'C:\\ServiceMonitor.exe'; Invoke-WebRequest -UseBasicParsing -Uri 'http://media.corporate-ir.net/media_files/IROL/17/176060/Oct18/Amazon%20logo.PNG' -OutFile 'c:\\folderInsidePod\\amazon.png'; echo '<html><body><br/><br/><marquee><H1>Hello EKS with Amazon FSx and Managed AD!!!</H1></marquee></body></html>' > C:\\inetpub\\wwwroot\\index.html; C:\\ServiceMonitor.exe 'w3svc';"
+	volumeMounts:
+		- mountPath: c:\folderInsidePod
+		name: testmount
+	volumes:
+	- name: testmount
+		hostPath: 
+		path: G:\folder1
+		type: Directory
+	nodeSelector:
+	kubernetes.io/os: windows
+```
+[See full Yaml](lib/hello-iis/windows_server_iis.yaml)
+
+Important parameters:
+
+- securityContext with gmsaCredentialSpecName: Map a specific Cred file to the Pod , see example [specfile](lib/gMSA/gmsa-example.yaml). (The file is generated with the script provided in step "Generate the gMSA spec file for Kubernetes cluster" in the [installation guide](Installation_guide.md))
+- volumeMounts : Mount the Global Mapping to the Pod
+- hostPath : Map between the Global Mapping to the Pod
+- nodeSelector : Select windows hosts
+ 
+# Automation with CDK
 
 The steps in high level (the manual steps are `marked`):
 
