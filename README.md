@@ -128,30 +128,35 @@ Important parameters:
 The steps in high level (the manual steps are `marked`):
 
 1. Infrastructure
-	- VPC
-	- Managed AD
-	- Secret Manager
-	- Create Amazon FSx in two Availability zones
-	- `Create the gMSA Account in the AD`
-	- `Create a dedicated folder on the FSx for the SMB Share with the AD gMSA`
-	- Route 53 Resolver
-2. Infrastructure customization
+	- Create and configure Amazon VPC
+	- Create and configure Managed AD in two Availability zones
+	- Generate and store Domain admin password in Secrets Manager
+	- Create Amazon FSx file system in two Availability zones with Managed AD
+	- `Create the gMSA Account in the AD` (Script provided)
+	- `Create a folder on the FSx for the SMB Share with the AD gMSA` (Script provided)
+	- Create and configure Route 53 Resolver to resolve Active Directory domain name from the VPC
+2. Kubernetes Infrastructure
 	- Create EKS Cluster
-	- Deploy two Linux machines in NodeGroup
+	- Deploy two Linux machines with Managed-NodeGroup
 	- Configure Permissions & Roles (IAM Roles)
-	- K8s groups to the EC2 Instance
-	- `Installing eksctl on local machine`
-	- `Map IAM Users to mapRoles`
-	- `Enable Windows Support with eksctl`
+	- Map Kubernetes groups to the EC2 Instance roles
+	- `Installing eksctl on local machine` (Script provided)
+	- `Map IAM Users to mapRoles` (Optional)
+	- `Enable Windows Support with eksctl` (Script provided)
 3. Adding Capacity
-	- Configure Launch Template
-	- Create Autoscaling Group
-	- Connect the Instances to the Domain
-	- Map the CIFS to the host with Global Mapping
-	- Connect the Nodes to the EKS Cluster
-	- Connect the ASG to the Cluster
+	- Configure Launch Template with user-data scripts
+	- Create Autoscaling Group (ASG) with the launch template
+	- Connect the Instances to the AD Domain
+	- Map the CIFS to the host with SMB Global Mapping (with SSM document and State manager)
+	- Connect the Nodes to the EKS Cluster (with SSM document)
+	- Connect the ASG to the Cluster (IAM roles)
 4. Scheduling Pods
 	- `Deployment Yaml`
 	- `Service Yaml`
+
+Instance lifecycle
+
+![Instancelifecycle.png](Screenshots/InstanceLifeCycle.png)
+
 
 [Full Installation guide](Installation_guide.md)
