@@ -1,59 +1,55 @@
 #!/usr/bin/env node
-import "source-map-support/register";
-import * as cdk from "@aws-cdk/core";
-import {
-  WindowsEKSCluster,
-  WindowsEKSNodes,
-} from "../lib/eks_cluster_infrastructure";
-import { WindowsFSxMad } from "../lib/aws-vpc-windows-fsx-mad";
-import { WindowsWorker } from "../lib/windows_worker";
-import * as iam from "@aws-cdk/aws-iam";
+import 'source-map-support/register';
+import * as cdk from '@aws-cdk/core';
+import { WindowsEKSCluster } from '../lib/eks_cluster_infrastructure';
+import { WindowsEKSNodes } from '../lib/windows_eks_nodes';
+import { WindowsFSxMad } from '../lib/aws-vpc-windows-fsx-mad';
+import { WindowsWorker } from '../lib/windows_worker';
+import * as iam from '@aws-cdk/aws-iam';
 
 export class ExampleApp extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Step 1
-    const vpc_infrasracture = new WindowsFSxMad(this, "Main-Infra", {
+    const vpc_infrasracture = new WindowsFSxMad(this, 'Main-Infra', {
       fsxSize: 200,
       fsxMbps: 128,
       multiAZ: true,
       fsxInPrivateSubnet: true,
-      domainName: "windowsoneks.aws",
+      domainName: 'windowsoneks.aws',
     });
 
     // Step 2
-    const eks_infra = new WindowsEKSCluster(
-      this,
-      "EKS-Stack",
-      vpc_infrasracture
-    );
+    const eks_infra = new WindowsEKSCluster(this, 'EKS-Stack', vpc_infrasracture);
 
     // // Note: Enable windows support, create folder in the FSx filesystem
 
     // Step 3
-    const worker = new WindowsWorker(this, "WindowsWorker", {
+    const windows_worker = new WindowsWorker(this, 'WindowsWorker', {
       vpc: vpc_infrasracture.vpc,
       madObject: vpc_infrasracture.ad,
       iamManagedPoliciesList: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "AmazonSSMManagedInstanceCore"
-        ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "AmazonSSMDirectoryServiceAccess"
-        ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName("SecretsManagerReadWrite"),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMDirectoryServiceAccess'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'),
       ],
     });
 
-    worker.openRDP("83.130.43.228/32")
-
-    const windows_nodes = new WindowsEKSNodes(
-      this,
-      "Windows-Nodes-Stack",
-      vpc_infrasracture,
-      eks_infra
+    windows_worker.runPsCommands(
+      [
+        `aws eks update-kubeconfig --name ${eks_infra.ekscluster.clusterName} --region ${process.env.CDK_DEFAULT_REGION}`,
+        'mkdir c:\\kubectl',
+        'wget -O C:\\kubectl\\kubectl.exe https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/windows/amd64/kubectl.exe',
+        '$env:Path += ";C:\\kubectl"',
+      ],
+      'installKubectl',
     );
+
+    eks_infra.ekscluster.awsAuth.addMastersRole(windows_worker.worker_role);
+    // worker.openRDP('your-ip/32');
+
+    const windows_nodes = new WindowsEKSNodes(this, 'Windows-Nodes-Stack', vpc_infrasracture, eks_infra);
   }
 }
 
@@ -65,4 +61,4 @@ const cdk_props: cdk.StackProps = {
   },
 };
 
-new ExampleApp(app, "myApp01", cdk_props);
+new ExampleApp(app, 'myApp01', cdk_props);

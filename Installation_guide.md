@@ -104,12 +104,13 @@ example:
 
 ![](./Screenshots/Pasted%20image%2020210802181125.png)
 
-<Required> [Install eksctl](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html) from on your machine and enable Windows Support on the cluster:
+**Required** 
+[Install eksctl](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html) on your machine and enable Windows Support on the cluster:
 
   
 ```bash
 eksctl utils install-vpc-controllers --cluster <cluster-name> --approve  
-kubectl rollout restart deployment -n kube-system vpc-admission-webhook```
+kubectl rollout restart deployment -n kube-system vpc-admission-webhook
 ```
 
 At this stage, the cluster is ready to add Windows Nodes.
