@@ -12,11 +12,9 @@
  */
 
 // Imports
-import * as cdk from '@aws-cdk/core';
-import * as ec2 from '@aws-cdk/aws-ec2';
-import * as fsx from '@aws-cdk/aws-fsx';
+import { Construct } from 'constructs';
+import { aws_fsx as fsx, aws_ec2 as ec2 } from 'aws-cdk-lib';
 import { VpcMad, VpcMadProps } from './aws-vpc-mad';
-import { CfnFileSystemProps } from '@aws-cdk/aws-fsx';
 
 /**
  * The properties for the WindowsFSxMad class.
@@ -50,7 +48,7 @@ export interface WindowsFSxMadProps extends VpcMadProps {
 
 export class WindowsFSxMad extends VpcMad {
   readonly fsx: fsx.CfnFileSystem;
-  constructor(scope: cdk.Construct, id: string = 'aws-vpc-mad-fsx', props: WindowsFSxMadProps) {
+  constructor(scope: Construct, id: string = 'aws-vpc-mad-fsx', props: WindowsFSxMadProps) {
     super(scope, id, props);
     props.fsxInPrivateSubnet = props.fsxInPrivateSubnet ?? true;
     props.fsxMbps = props.fsxMbps ?? 128;
@@ -73,7 +71,7 @@ export class WindowsFSxMad extends VpcMad {
     });
     sg.addIngressRule(ec2.Peer.ipv4(this.vpc.vpcCidrBlock), ec2.Port.allTcp());
 
-    const fsx_props: CfnFileSystemProps = {
+    const fsx_props: fsx.CfnFileSystemProps = {
       fileSystemType: 'WINDOWS',
       subnetIds: props.multiAZ ? [subnets[0], subnets[1]] : [subnets[0]],
       windowsConfiguration: windows_configuration,

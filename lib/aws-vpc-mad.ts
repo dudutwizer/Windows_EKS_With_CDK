@@ -12,12 +12,14 @@
  */
 
 // Imports
-import * as cdk from '@aws-cdk/core';
-import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
-import * as mad from '@aws-cdk/aws-directoryservice';
-import * as ec2 from '@aws-cdk/aws-ec2';
-import * as r53resolver from '@aws-cdk/aws-route53resolver';
-
+import { Construct } from 'constructs';
+import {
+  aws_directoryservice as mad,
+  aws_ec2 as ec2,
+  aws_route53resolver as r53resolver,
+  aws_secretsmanager as secretsmanager,
+  Fn,
+} from 'aws-cdk-lib';
 /**
  * The properties for the VpcMad class.
  */
@@ -47,17 +49,17 @@ export interface VpcMadProps {
    */
   vpc?: ec2.IVpc;
 }
-export class VpcMad extends cdk.Construct {
+export class VpcMad extends Construct {
   readonly secret: secretsmanager.ISecret;
   readonly ad: mad.CfnMicrosoftAD;
   readonly CfnDHCPOptions: ec2.CfnDHCPOptions;
   readonly vpc: ec2.IVpc;
 
-  constructor(scope: cdk.Construct, id = 'aws-vpc-mad', props: VpcMadProps) {
+  constructor(scope: Construct, id = 'aws-vpc-mad', props: VpcMadProps) {
     super(scope, id);
     props.domainName = props.domainName ?? 'domain.aws';
     props.edition = props.edition ?? 'Standard';
-    this.vpc = props.vpc ?? new ec2.Vpc(this, id + '-VPC', {maxAzs: 2});
+    this.vpc = props.vpc ?? new ec2.Vpc(this, id + '-VPC', { maxAzs: 2 });
 
     this.secret =
       props.secret ??
@@ -105,7 +107,7 @@ export class VpcMad extends cdk.Construct {
       domainName: props.domainName,
       resolverEndpointId: outBoundResolver.ref,
       ruleType: 'FORWARD',
-      targetIps: [{ ip: cdk.Fn.select(0, this.ad.attrDnsIpAddresses) }, { ip: cdk.Fn.select(1, this.ad.attrDnsIpAddresses) }],
+      targetIps: [{ ip: Fn.select(0, this.ad.attrDnsIpAddresses) }, { ip: Fn.select(1, this.ad.attrDnsIpAddresses) }],
     });
 
     new r53resolver.CfnResolverRuleAssociation(this, 'assoc', {

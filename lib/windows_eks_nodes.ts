@@ -12,18 +12,15 @@
  */
 
 // Imports
-import * as cdk from '@aws-cdk/core';
+import { Construct } from 'constructs';
+import { aws_iam as iam, aws_ec2 as ec2, aws_autoscaling as autoscaling, aws_ssm as ssm, CfnResource } from 'aws-cdk-lib';
 import { WindowsFSxMad } from './aws-vpc-windows-fsx-mad';
-import * as iam from '@aws-cdk/aws-iam';
-import * as ec2 from '@aws-cdk/aws-ec2';
-import autoscaling = require('@aws-cdk/aws-autoscaling');
-import { CfnAssociation } from '@aws-cdk/aws-ssm';
 import { WindowsEKSCluster } from './eks_cluster_infrastructure';
 
-export class WindowsEKSNodes extends cdk.Construct {
+export class WindowsEKSNodes extends Construct {
   readonly windowsNodesASG: autoscaling.AutoScalingGroup;
 
-  constructor(scope: cdk.Construct, id: string, vpc_infrasracture: WindowsFSxMad, windowsEKSCluster: WindowsEKSCluster) {
+  constructor(scope: Construct, id: string, vpc_infrasracture: WindowsFSxMad, windowsEKSCluster: WindowsEKSCluster) {
     super(scope, id);
     const windows_machineImage = new ec2.LookupMachineImage({
       name: '*Windows_Server-2019-English-Full-EKS_Optimized-1.20*',
@@ -63,7 +60,7 @@ export class WindowsEKSNodes extends cdk.Construct {
     });
 
     const asgResource = this.windowsNodesASG.node.children.find(
-      (c) => (c as cdk.CfnResource).cfnResourceType === 'AWS::AutoScaling::AutoScalingGroup',
+      (c) => (c as CfnResource).cfnResourceType === 'AWS::AutoScaling::AutoScalingGroup',
     ) as autoscaling.CfnAutoScalingGroup;
 
     this.windowsNodesASG.addUserData(`
@@ -80,7 +77,7 @@ export class WindowsEKSNodes extends cdk.Construct {
       Restart-Computer -Force
       `);
 
-    new CfnAssociation(this, 'SMBGlobalMappingAndEKSJoin', {
+    new ssm.CfnAssociation(this, 'SMBGlobalMappingAndEKSJoin', {
       name: 'AWS-RunPowerShellScript',
       parameters: {
         commands: [
@@ -121,7 +118,7 @@ export class WindowsEKSNodes extends cdk.Construct {
       ],
     });
 
-    new CfnAssociation(this, 'gMSASpecFile', {
+    new ssm.CfnAssociation(this, 'gMSASpecFile', {
       name: 'AWS-RunPowerShellScript',
       parameters: {
         commands: [

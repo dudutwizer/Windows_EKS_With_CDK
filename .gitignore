@@ -14,3 +14,5 @@ cdk.out/
 
 # Local state files & OS specifics
 .DS_Store
+
+package-lock.json

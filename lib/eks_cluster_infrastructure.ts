@@ -12,19 +12,14 @@
  */
 
 // Imports
-import * as cdk from '@aws-cdk/core';
+import { Construct } from 'constructs';
+import { aws_iam as iam, aws_eks as eks, CfnOutput } from 'aws-cdk-lib';
 import { WindowsFSxMad } from './aws-vpc-windows-fsx-mad';
-import * as iam from '@aws-cdk/aws-iam';
-import * as eks from '@aws-cdk/aws-eks';
-import { CfnOutput } from '@aws-cdk/core';
-import * as ec2 from '@aws-cdk/aws-ec2';
-import autoscaling = require('@aws-cdk/aws-autoscaling');
-import { CfnAssociation } from '@aws-cdk/aws-ssm';
 
-export class WindowsEKSCluster extends cdk.Construct {
+export class WindowsEKSCluster extends Construct {
   readonly ekscluster: eks.Cluster;
 
-  constructor(scope: cdk.Construct, id: string, vpc_infrasracture: WindowsFSxMad) {
+  constructor(scope: Construct, id: string, vpc_infrasracture: WindowsFSxMad) {
     super(scope, id);
 
     const eks_role = new iam.Role(this, 'eks-instance-role', {

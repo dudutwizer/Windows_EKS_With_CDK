@@ -11,13 +11,8 @@
  *  and limitations under the License.
  */
 
-import * as cdk from '@aws-cdk/core';
-import * as ec2 from '@aws-cdk/aws-ec2';
-import { CfnAssociation } from '@aws-cdk/aws-ssm';
-import { IManagedPolicy } from '@aws-cdk/aws-iam';
-import * as iam from '@aws-cdk/aws-iam';
-import * as mad from '@aws-cdk/aws-directoryservice';
-import { SecurityGroup } from '@aws-cdk/aws-ec2';
+import { Construct } from 'constructs';
+import { aws_iam as iam, aws_ec2 as ec2, aws_ssm as ssm, CfnOutput, aws_directoryservice as mad } from 'aws-cdk-lib';
 
 /**
  * The properties for the WindowsWorker class.
@@ -32,7 +27,7 @@ export interface WindowsWorkerProps {
    * IAM Instance role permissions
    * @default - 'AmazonSSMManagedInstanceCore, AmazonSSMDirectoryServiceAccess'.
    */
-  iamManagedPoliciesList?: IManagedPolicy[];
+  iamManagedPoliciesList?: iam.IManagedPolicy[];
   /**
    * The EC2 Instance type to use
    *
@@ -55,11 +50,11 @@ export interface WindowsWorkerProps {
 /**
  * The WindowsWorker class.
  */
-export class WindowsWorker extends cdk.Construct {
+export class WindowsWorker extends Construct {
   readonly worker: ec2.Instance;
   readonly worker_role: iam.Role;
 
-  constructor(scope: cdk.Construct, id = 'WindowsWorker', props: WindowsWorkerProps) {
+  constructor(scope: Construct, id = 'WindowsWorker', props: WindowsWorkerProps) {
     super(scope, id);
     props.iamManagedPoliciesList = props.iamManagedPoliciesList ?? [
       iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
@@ -75,7 +70,7 @@ export class WindowsWorker extends cdk.Construct {
       managedPolicies: props.iamManagedPoliciesList,
     });
 
-    const securityGroup = new SecurityGroup(this, 'WindowsWorkerSG', {
+    const securityGroup = new ec2.SecurityGroup(this, 'WindowsWorkerSG', {
       vpc: props.vpc,
     });
 
@@ -91,7 +86,7 @@ export class WindowsWorker extends cdk.Construct {
       }),
     });
 
-    new CfnAssociation(this, 'JoinADAssociation', {
+    new ssm.CfnAssociation(this, 'JoinADAssociation', {
       name: 'AWS-JoinDirectoryServiceDomain',
       parameters: {
         directoryId: [props.madObject.ref],
@@ -100,7 +95,7 @@ export class WindowsWorker extends cdk.Construct {
       targets: [{ key: 'InstanceIds', values: [this.worker.instanceId] }],
     });
 
-    new cdk.CfnOutput(this, 'CfnOutputWindowsWorker', {
+    new CfnOutput(this, 'CfnOutputWindowsWorker', {
       value: this.worker.instancePublicDnsName,
     });
   }
@@ -110,7 +105,7 @@ export class WindowsWorker extends cdk.Construct {
    * i.e: runPsCommands(["Write-host 'Hello world'", "Write-host 'Second command'"], "myScript")
    */
   runPsCommands(psCommands: string[], id: string) {
-    new CfnAssociation(this, id, {
+    new ssm.CfnAssociation(this, id, {
       name: 'AWS-RunPowerShellScript',
       parameters: {
         commands: psCommands,
