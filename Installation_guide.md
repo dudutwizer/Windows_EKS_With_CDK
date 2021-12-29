@@ -267,7 +267,8 @@ On your Linux OS, Run the following commands to setup the kubectl to be used wit
 ```
 aws eks update-kubeconfig --name <ClusterName> --region <Region> --role-arn <The IAM Role that created the cluster>
 aws eks get-token --cluster-name <ClusterName> --region us-east-1 --role-arn <The IAM Role that created the cluster>
-curl -sL https://raw.githubusercontent.com/kubernetes-sigs/windows-gmsa/master/admission-webhook/deploy/deploy-gmsa-webhook.sh | bash -s -- --file webhook-manifests.yml
+curl -L https://raw.githubusercontent.com/kubernetes-sigs/windows-gmsa/master/admission-webhook/deploy/deploy-gmsa-webhook.sh --output deploy-gmsa-webhook.sh
+K8S_GMSA_DEPLOY_DOWNLOAD_REV='v0.1.0' ./deploy-gmsa-webhook.sh --file ./gmsa-manifests --image wk88/k8s-gmsa-webhook:v1.15 --overwrite # Workaround explained here https://github.com/kubernetes-sigs/windows-gmsa/issues/49
 ```
 
 
