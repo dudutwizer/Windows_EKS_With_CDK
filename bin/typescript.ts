@@ -52,7 +52,7 @@ export class ExampleApp extends Stack {
 
     // Note: Please enable windows support and create folder in the FSx filesystem before deploying the Nodes.
 
-    // const windows_nodes = new WindowsEKSNodes(this, 'Windows-Nodes-Stack', vpc_infrasracture, eks_infra);
+    const windows_nodes = new WindowsEKSNodes(this, 'Windows-Nodes-Stack', vpc_infrastructure, eks_infra);
   }
 }
 

@@ -23,7 +23,7 @@ export class WindowsEKSNodes extends Construct {
   constructor(scope: Construct, id: string, vpc_infrasracture: WindowsFSxMad, windowsEKSCluster: WindowsEKSCluster) {
     super(scope, id);
     const windows_machineImage = new ec2.LookupMachineImage({
-      name: '*Windows_Server-2019-English-Full-EKS_Optimized-1.20*',
+      name: '*Windows_Server-2019-English-Full-EKS_Optimized-1.21*',
       windows: true,
     });
 

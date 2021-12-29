@@ -192,9 +192,9 @@ kubectl apply -f lib/gMSA/gmsa-webapp1-rolebinding.yaml
 
 Create a Folder in the FSx filesystem. using the following commands: 
 
-Get the parameters from FSx Console or with `aws fsx describe-file-systems --query 'FileSystems[*].[DNSName, WindowsConfiguration.RemoteAdministrationEndpoint]'`
+(You can get the parameters from FSx Console or with aws CLI `aws fsx describe-file-systems --query 'FileSystems[*].[DNSName, WindowsConfiguration.RemoteAdministrationEndpoint]'`)
 
-Screenshot:
+FSx Console Screenshot:
 	
 ![](./Screenshots/Pasted%20image%2020210802181213.png)
 
