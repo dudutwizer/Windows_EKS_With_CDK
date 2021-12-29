@@ -119,6 +119,11 @@ At this stage, the cluster is ready to add Windows Nodes.
 
 Login to the Worker Machine with domain account (get the password from Secrets Manager).
 
+Get the password using the following command:
+```
+aws secretsmanager get-secret-value --secret-id <secret-arn> --query SecretString --output text
+```
+
 Run elevated Powershell.
 	
 **Create gMSA account**
@@ -141,17 +146,18 @@ Install-Module CredentialSpec
 New-ADGroup -Name "WebApp01 Authorized Hosts" -SamAccountName "WebApp01Hosts" -GroupScope DomainLocal
 
 # Create the gMSA
-New-ADServiceAccount -Name "WebApp01" -DnsHostName "WebApp01.windowsoneks.aws" -ServicePrincipalNames "host/WebApp01", "host/WebApp01.windowsoneks.aws" -PrincipalsAllowedToRetrieveManagedPassword "WebApp01Hosts$"
+New-ADServiceAccount -Name "WebApp01" -DnsHostName "WebApp01.windowsoneks.aws" -ServicePrincipalNames "host/WebApp01", "host/WebApp01.windowsoneks.aws" -PrincipalsAllowedToRetrieveManagedPassword "WebApp01Hosts"
+
+mkdir C:\ProgramData\Docker\CredentialSpecs
+
+Add-ADGroupMember -Identity 'WebApp01Hosts' -Members $env:computername$ -Credential $domain_admin_credential
 ```
+
+Restart the worker machine `Restart-Computer -Force` 
 
 Generate the gMSA spec file for Kubernetes cluster
 
 ```powershell
-mkdir C:\ProgramData\Docker\CredentialSpecs
-
-Add-ADGroupMember -Identity 'WebApp01Hosts' -Members $env:computername$ -Credential $domain_admin_credential
-
-Restart-Computer -Force
 
 $ResourceName = "gmsawebapp01"
 
@@ -179,13 +185,14 @@ Save the output locally , instead the file gmsa-example.yaml , and apply it with
 
 ```bash
 kubectl apply -f lib/gMSA/gmsa-crd.yml
-kubectl apply -f lib/gMSA/gmsa-example.yaml # Edit this file 
+kubectl apply -f lib/gMSA/gmsa-example.yaml # Apply only after editing this file (!) 
 kubectl apply -f lib/gMSA/gmsa-webapp1-role.yaml
 kubectl apply -f lib/gMSA/gmsa-webapp1-rolebinding.yaml
 ```
 
 Create a Folder in the FSx filesystem. using the following commands: 
-(Get the parameters from FSx Console)
+
+Get the parameters from FSx Console or with `aws fsx describe-file-systems --query 'FileSystems[*].[DNSName, WindowsConfiguration.RemoteAdministrationEndpoint]'`
 
 Screenshot:
 	
@@ -203,7 +210,7 @@ New-Item -ItemType Directory -Name $FolderName -Path \\$FSX\D$\
 # Create the folder to mount to the Pods 
 New-Item -ItemType Directory -Name $ContainersFolderName -Path \\$FSX\D$\$FolderName\ 
 
-Set NTFS Permissions
+# Set NTFS Permissions
 
 # The gMSA Account
 
@@ -225,18 +232,42 @@ Disconnect-PSSession -Session $Session
 
 ### gMSA Webhook for automatic mount the CredFile to the Pod <Optional>
 
-To install the gMSA Webhook Admission controller, you’ll use an existing script. As this script was created to be used on a Linux OS, you can use Windows Subsystem for Linux (WSL) or simple launch an EC2 Amazon Linux. Assuming you already have the Amazon EC2 Linux with AWS CLI and kubectl installed as part of the prerequisites. Run the following command to setup the kubectl to be used with your Amazon EKS cluster:
+To install the gMSA Webhook Admission controller, you’ll use an existing script. As this script was created to be used on a Linux OS, you can use Windows Subsystem for Linux (WSL) or simple launch an EC2 Amazon Linux. Assuming you already have the Amazon EC2 Linux with AWS CLI and kubectl installed as part of the prerequisites. 
 
-```bash
-aws eks --region region-code update-kubeconfig --name cluster_name
+To install WSL on Windows run `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux` restart, and install Ubuntu manually (Windows Server OS doesn't support Microsoft Store) using the following guide [https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions](https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions)
 
-curl -L https://raw.githubusercontent.com/kubernetes-sigs/windows-gmsa/master/admission-webhook/deploy/deploy-gmsa-webhook.sh --output deploy-gmsa-webhook.sh
+Here is the code snippet to install WSL with Ubuntu on Windows EC2 
 
-chmod +x deploy-gmsa-webhook.sh
+```powershell
+dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+Invoke-WebRequest -Uri https://aka.ms/wslubuntu2004 -OutFile Ubuntu.appx -UseBasicParsing
+Add-AppxPackage .\Ubuntu.appx
+Restart-Computer -Force
+```
 
-K8S_GMSA_DEPLOY_DOWNLOAD_REV='v0.1.0' 
+On your WSL Instance run
 
-./deploy-gmsa-webhook.sh --file ./gmsa-manifests --image wk88/k8s-gmsa-webhook:v1.15 --overwrite
+```
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+sudo mv /tmp/eksctl /usr/local/bin
+curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
+chmod +x ./kubectl
+mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+kubectl version --short --client
+sudo ./aws/install
+sudo apt-get update
+sudo apt-get install awscli
+aws --version
+```
+
+
+On your Linux OS, Run the following commands to setup the kubectl to be used with your Amazon EKS cluster.
+
+```
+aws eks update-kubeconfig --name <ClusterName> --region <Region> --role-arn <The IAM Role that created the cluster>
+aws eks get-token --cluster-name <ClusterName> --region us-east-1 --role-arn <The IAM Role that created the cluster>
+curl -sL https://raw.githubusercontent.com/kubernetes-sigs/windows-gmsa/master/admission-webhook/deploy/deploy-gmsa-webhook.sh | bash -s -- --file webhook-manifests.yml
 ```
 
 

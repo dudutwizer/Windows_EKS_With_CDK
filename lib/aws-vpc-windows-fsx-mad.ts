@@ -13,7 +13,7 @@
 
 // Imports
 import { Construct } from 'constructs';
-import { aws_fsx as fsx, aws_ec2 as ec2 } from 'aws-cdk-lib';
+import { aws_fsx as fsx, aws_ec2 as ec2, CfnOutput } from 'aws-cdk-lib';
 import { VpcMad, VpcMadProps } from './aws-vpc-mad';
 
 /**
@@ -56,7 +56,7 @@ export class WindowsFSxMad extends VpcMad {
     props.multiAZ = props.multiAZ ?? true;
 
     const subnets = this.vpc.selectSubnets({
-      subnetType: props.fsxInPrivateSubnet ? ec2.SubnetType.PRIVATE : ec2.SubnetType.PUBLIC,
+      subnetType: props.fsxInPrivateSubnet ? ec2.SubnetType.PRIVATE_WITH_NAT : ec2.SubnetType.PUBLIC,
     }).subnetIds;
 
     const windows_configuration: fsx.CfnFileSystem.WindowsConfigurationProperty = {

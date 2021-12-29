@@ -46,10 +46,10 @@ export class WindowsEKSCluster extends Construct {
       username: 'system:node:{{EC2PrivateDNSName}}',
     });
 
-    new CfnOutput(this, 'K8sMapRolesReminder', {
+    new CfnOutput(this, 'K8s-Map_Roles-Reminder', {
       value: `If you are using IAM roles, please run 'kubectl edit cm -n kube-system aws-auth' and add your IAM role to mapRoles`,
     });
-    new CfnOutput(this, 'WindowsSupport', {
+    new CfnOutput(this, 'K8s-Windows-Support', {
       value: `please run 'eksctl utils install-vpc-controllers --cluster ${this.ekscluster.clusterName}' to install windows support`,
     });
   }

@@ -18,6 +18,7 @@ import {
   aws_ec2 as ec2,
   aws_route53resolver as r53resolver,
   aws_secretsmanager as secretsmanager,
+  CfnOutput,
   Fn,
 } from 'aws-cdk-lib';
 /**
@@ -76,7 +77,11 @@ export class VpcMad extends Construct {
       });
 
     const subnets = this.vpc.selectSubnets({
-      subnetType: ec2.SubnetType.PRIVATE,
+      subnetType: ec2.SubnetType.PRIVATE_WITH_NAT,
+    });
+
+    new CfnOutput(this, '_SSM_GetSecret_', {
+      value: `aws secretsmanager get-secret-value --secret-id ${this.secret.secretArn} --query SecretString --output text`,
     });
 
     this.ad = new mad.CfnMicrosoftAD(this, id + '-Mad', {

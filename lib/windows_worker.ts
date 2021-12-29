@@ -63,7 +63,10 @@ export class WindowsWorker extends Construct {
 
     props.usePrivateSubnet = props.usePrivateSubnet ?? false;
 
-    const ami_id = new ec2.WindowsImage(ec2.WindowsVersion.WINDOWS_SERVER_2019_ENGLISH_FULL_BASE);
+    const machineImage = new ec2.LookupMachineImage({
+      name: '*Windows_Server-2022-English-Full-Containers*',
+      windows: true,
+    });
 
     this.worker_role = new iam.Role(this, 'WindowsWorkerRole-' + id, {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -76,12 +79,12 @@ export class WindowsWorker extends Construct {
 
     this.worker = new ec2.Instance(this, 'WindowsWorkerNode', {
       instanceType: props.InstanceType ?? new ec2.InstanceType('m5.large'),
-      machineImage: ami_id,
+      machineImage: machineImage,
       vpc: props.vpc,
       role: this.worker_role,
       securityGroup: securityGroup,
       vpcSubnets: props.vpc.selectSubnets({
-        subnetType: props.usePrivateSubnet ? ec2.SubnetType.PRIVATE : ec2.SubnetType.PUBLIC,
+        subnetType: props.usePrivateSubnet ? ec2.SubnetType.PRIVATE_WITH_NAT : ec2.SubnetType.PUBLIC,
         onePerAz: true,
       }),
     });
@@ -95,8 +98,8 @@ export class WindowsWorker extends Construct {
       targets: [{ key: 'InstanceIds', values: [this.worker.instanceId] }],
     });
 
-    new CfnOutput(this, 'CfnOutputWindowsWorker', {
-      value: this.worker.instancePublicDnsName,
+    new CfnOutput(this, 'Windows-Worker-Details', {
+      value: `InstanceId: ${this.worker.instanceId}; dnsName: ${this.worker.instancePublicDnsName}`,
     });
   }
 
