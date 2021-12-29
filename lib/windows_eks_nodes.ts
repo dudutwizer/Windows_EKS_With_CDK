@@ -13,7 +13,7 @@
 
 // Imports
 import { Construct } from 'constructs';
-import { aws_iam as iam, aws_ec2 as ec2, aws_autoscaling as autoscaling, aws_ssm as ssm, CfnResource } from 'aws-cdk-lib';
+import { aws_iam as iam, aws_ec2 as ec2, aws_autoscaling as autoscaling, aws_ssm as ssm, CfnResource, CfnOutput } from 'aws-cdk-lib';
 import { WindowsFSxMad } from './aws-vpc-windows-fsx-mad';
 import { WindowsEKSCluster } from './eks_cluster_infrastructure';
 
@@ -47,6 +47,10 @@ export class WindowsEKSNodes extends Construct {
     windowsEKSCluster.ekscluster.awsAuth.addRoleMapping(windows_workers_role, {
       groups: ['system:bootstrappers', 'system:nodes', 'eks:kube-proxy-windows'],
       username: 'system:node:{{EC2PrivateDNSName}}',
+    });
+
+    new CfnOutput(this, 'ARN-of-Windows-Instance-role', {
+      value: `${windows_workers_role.roleArn}`,
     });
 
     this.windowsNodesASG = new autoscaling.AutoScalingGroup(this, 'WindowsInstancesCapacity', {
@@ -131,18 +135,20 @@ export class WindowsEKSNodes extends Construct {
           '$domain_admin_credential = New-Object System.Management.Automation.PSCredential($username,$password)',
           'Add-WindowsFeature RSAT-AD-PowerShell',
           'Install-PackageProvider NuGet -Force',
-          'Install-Module CredentialSpec',
+          'Install-Module CredentialSpec -Force',
           'Set-PSRepository PSGallery -InstallationPolicy Trusted',
           "Add-ADGroupMember -Identity 'WebApp01Hosts' -Members $env:computername$ -Credential $domain_admin_credential",
           '# Saves the cred file to C:\\ProgramData\\Docker\\CredentialSpecs (default)',
           '$bootfix = {',
           'New-CredentialSpec -AccountName WebApp01',
           '}',
-          '# Running the boot fix once',
-          '& $bootfix',
           '# Scheduling onboot',
           '$trigger =  New-ScheduledTaskTrigger -AtStartup',
+          '$bootfix | set-content c:\\Scripts\\gMSA.ps1',
+          "$action = New-ScheduledTaskAction -Execute 'Powershell.exe' -Argument 'c:\\scripts\\gMSA.ps1'",
           "Register-ScheduledTask -Action $action -Trigger $trigger -TaskName 'CreateCredSpecFile' -Description 'CreateCredFile and saves it in default folder' -RunLevel Highest -User $username -Password $Secret.Password",
+          '# Reboot to apply changes',
+          'Restart-Computer -Force',
           '',
         ],
       },

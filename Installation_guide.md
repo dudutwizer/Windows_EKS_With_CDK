@@ -30,37 +30,14 @@ Edit the typescript.ts file and comment out the eks_infra object and the windows
  });
 
  // const eks_infra = new WindowsEKSCluster(
- // this,
- // "EKS-Stack",
- // vpc_infrasracture
- // );
- // const worker = new WindowsWorker(this, "WindowsWorker", {
- // vpc: vpc_infrasracture.vpc,
- // madObject: vpc_infrasracture.ad,
- // iamManagedPoliciesList: [
- // iam.ManagedPolicy.fromAwsManagedPolicyName(
- // "AmazonSSMManagedInstanceCore"
- // ),
- // iam.ManagedPolicy.fromAwsManagedPolicyName(
- // "AmazonSSMDirectoryServiceAccess"
- // ),
- // iam.ManagedPolicy.fromAwsManagedPolicyName("SecretsManagerReadWrite"),
- // ],
- // });
- // const windows_nodes = new WindowsEKSNodes(
- // this,
- // "Windows-Nodes-Stack",
- // vpc_infrasracture,
- // eks_infra
- // );
- // }
+//... all the other objects should be disabled for now
  ```
 
 Launch the CDK code
 
 `cdk deploy --all`
 
-**Step 2: Customize the infrastructure:**
+**Step 2: Customize the infrastructure:** <Optional>
 
 Review the resources deployed (FSx, Amazon MAD etc) and make the relevant infrastructure changes (Domain Trust, user-accounts if needed, 3rd party storage solution, etc)
 
@@ -83,7 +60,7 @@ And deploy the CDK APP again with the following command:
 
 At this step the EKS cluster is created and there are no nodes/workers configured.
 
-**Step 4: Adding local permissions to kubectl**
+**Step 4: Setting the permissions to kubectl cli**
 
 Grant local permissions:
 From the output of the CDK run the commands
@@ -94,18 +71,12 @@ From the output of the CDK run the commands
 aws eks update-kubeconfig --name <cluster-name> --region us-east-1 --role-arn <role-arn>
 ```
 
-Now kubectl should work on your local machine, configured with the EKS cluster.
+Now kubectl should work on your local machine, configured with the right EKS cluster.
 
-<Optional> Map IAM Role to the mapRoles (see [guide](https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html))
-
-`kubectl edit cm -n kube-system aws-auth`
-	
-example:
-
-![](./Screenshots/Pasted%20image%2020210802181125.png)
+Edit the `lib/aws-auth-cm-windows.yaml` file and apply it with `kubectl apply -f lib/aws-auth-cm-windows.yaml`
 
 **Required** 
-[Install eksctl](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html) on your machine and enable Windows Support on the cluster:
+[Install eksctl](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html) CLI on your machine and enable Windows Support on the cluster:
 
   
 ```bash
@@ -121,7 +92,7 @@ Login to the Worker Machine with domain account (get the password from Secrets M
 
 Get the password using the following command:
 ```
-aws secretsmanager get-secret-value --secret-id <secret-arn> --query SecretString --output text
+aws secretsmanager get-secret-value --secret-id <secret-arn> -q-query SecretString --output text
 ```
 
 Run elevated Powershell.
@@ -190,13 +161,15 @@ kubectl apply -f lib/gMSA/gmsa-webapp1-role.yaml
 kubectl apply -f lib/gMSA/gmsa-webapp1-rolebinding.yaml
 ```
 
-Create a Folder in the FSx filesystem. using the following commands: 
+## Create a Folder in the FSx filesystem. 
 
-(You can get the parameters from FSx Console or with aws CLI `aws fsx describe-file-systems --query 'FileSystems[*].[DNSName, WindowsConfiguration.RemoteAdministrationEndpoint]'`)
+You can get the parameters from FSx Console or with aws CLI `aws fsx describe-file-systems --query 'FileSystems[*].[DNSName, WindowsConfiguration.RemoteAdministrationEndpoint]'`
 
 FSx Console Screenshot:
 	
 ![](./Screenshots/Pasted%20image%2020210802181213.png)
+
+Create the folder using the following commands: 
 
 ```typescript
 $FSX = "fsxDNSName.domainname" ## Amazon FSx DNS Name
@@ -214,10 +187,9 @@ New-Item -ItemType Directory -Name $ContainersFolderName -Path \\$FSX\D$\$Folder
 
 # The gMSA Account
 
-$UserFQDN = “Windowsoneks\WebApp01$”
-
 $ACL = Get-Acl \\$FSx\D$\$FolderName
-$Ar = New-Object system.security.accesscontrol.filesystemaccessrule($UserFQDN,"FullControl","ObjectInherit","None", "Allow")
+$permission = "NT AUTHORITY\Authenticated Users","FullControl","Allow"
+$Ar = New-Object System.Security.AccessControl.FileSystemAccessRule $permission
 $ACL.SetAccessRule($Ar)
 Set-Acl \\$FSX\D$\$FolderName $ACL
 
@@ -225,16 +197,17 @@ Set-Acl \\$FSX\D$\$FolderName $ACL
 $Session = New-PSSession -ComputerName $FSxPS -ConfigurationName FsxRemoteAdmin
 Import-PsSession $Session
 New-FSxSmbShare -Name $FolderName -Path "D:\$FolderName" -Description "Shared folder with gMSA access" -Credential $domain_admin_credential -FolderEnumerationMode AccessBased
-Grant-FSxSmbShareaccess -Name $FolderName -AccountName $UserFQDN -accessRight Full -Confirm:$false
-Disconnect-PSSession -Session $Session
+$accessList="NT AUTHORITY\Authenticated Users"
+Grant-FSxSmbShareaccess -Name $FolderName -AccountName $accessList -accessRight Full -Confirm:$false
+Disconnect-PSSession -Session $Session 
 ```
 	
 
-### gMSA Webhook for automatic mount the CredFile to the Pod <Optional>
+### gMSA Webhook for automatic mount the CredFile to the Pod
 
-To install the gMSA Webhook Admission controller, you’ll use an existing script. As this script was created to be used on a Linux OS, you can use Windows Subsystem for Linux (WSL) or simple launch an EC2 Amazon Linux. Assuming you already have the Amazon EC2 Linux with AWS CLI and kubectl installed as part of the prerequisites. 
+To install the gMSA Webhook Admission controller, you’ll use an existing script. As this script was created to be used on a Linux OS, you can use Windows Subsystem for Linux (WSL) or launch an EC2 Amazon Linux. You will need AWS CLI and kubectl installed as part of the prerequisites. 
 
-To install WSL on Windows run `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux` restart, and install Ubuntu manually (Windows Server OS doesn't support Microsoft Store) using the following guide [https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions](https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions)
+To install WSL on Windows run `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux` and restart, then install Ubuntu manually (Windows Server OS doesn't support Microsoft Store) using the following guide [https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions](https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions)
 
 Here is the code snippet to install WSL with Ubuntu on Windows EC2 
 
@@ -246,7 +219,7 @@ Add-AppxPackage .\Ubuntu.appx
 Restart-Computer -Force
 ```
 
-On your WSL Instance run
+On your WSL Instance install AWS CLI and kubectl:
 
 ```
 curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
@@ -261,7 +234,6 @@ sudo apt-get install awscli
 aws --version
 ```
 
-
 On your Linux OS, Run the following commands to setup the kubectl to be used with your Amazon EKS cluster.
 
 ```
@@ -271,6 +243,10 @@ curl -L https://raw.githubusercontent.com/kubernetes-sigs/windows-gmsa/master/ad
 K8S_GMSA_DEPLOY_DOWNLOAD_REV='v0.1.0' ./deploy-gmsa-webhook.sh --file ./gmsa-manifests --image wk88/k8s-gmsa-webhook:v1.15 --overwrite # Workaround explained here https://github.com/kubernetes-sigs/windows-gmsa/issues/49
 ```
 
+Now apply again the gMSA file from the previous step
+```
+kubectl apply -f lib/gMSA/gmsa-example.yaml # Apply only after editing this file (!) 
+```
 
 **Step 6: Deploying Windows autoscaling group**
 
@@ -302,11 +278,52 @@ Scheduling pods with the yaml file provided
 kubectl apply -f lib/hello-iis/windows_server_iis.yaml
 ```
 
+# Tests
+
+## Pod level
+
+SMB Global Mapping accessible from the pod: 
+
+```
+kubectl exec -it windows-server-iis-56c7bcb674-gzsv5 powershell
+```
+
+![](/static/images/screenshots/2021-12-30-01-44-14.png?classes=border,shadow)
+
+Domain services using gMSA file from the pod
+```
+nltest /sc_verify:windowsoneks.aws
+```
+
+![](/static/images/screenshots/2021-12-30-01-45-14.png?classes=border,shadow)
+
+## Host level
+
+Check if the machine joined the domain
+```
+systeminfo | findstr /B "Domain"
+```
+
+![](/static/images/screenshots/2021-12-30-01-48-36.png?classes=border,shadow)
+
+check if the SMB Global Mapping mapped automatically 
+
+```
+Get-SmbGlobalMapping
+```
+
+![](/static/images/screenshots/2021-12-30-01-49-50.png?classes=border,shadow)
+
+## Cluster level
+
+
 Monitor the progress with 
 
 ```
 kubectl get svc,deploy,pods
 ```
+
+![](/static/images/screenshots/2021-12-30-01-50-55.png?classes=border,shadow)
 
 Once ready, get the web URL:
 
@@ -315,3 +332,7 @@ export WINDOWS_IIS_SVC=$(kubectl get svc -o jsonpath='{.items[1].status.loadBala
 
 echo http://${WINDOWS_IIS_SVC}
 ```
+
+Open the website
+
+![](/static/images/screenshots/2021-12-30-01-52-04.png?classes=border,shadow)

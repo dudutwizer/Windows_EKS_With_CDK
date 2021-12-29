@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapAccounts: '[]'
+  mapRoles: |
+    - rolearn: arn:aws:iam::117923233529:role/myApp01-EKSStackWindowsEKSClusterMastersRole153FC9-D5O48FP11ZTJ
+      username: arn:aws:iam::117923233529:role/myApp01-EKSStackWindowsEKSClusterMastersRole153FC9-D5O48FP11ZTJ
+      groups: 
+        - system:masters
+    - rolearn: arn:aws:iam::117923233529:role/myApp01-EKSStackWindowsEKSClusterNodegroupDefaultC-1K0JIPZHN7G36
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+    - rolearn: arn:aws:iam::117923233529:role/eks-node-roleEKS-Stack
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+    - rolearn: arn:aws:iam::117923233529:role/windows-eks-workers-instance-role
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+        - eks:kube-proxy-windows
