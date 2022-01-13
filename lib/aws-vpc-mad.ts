@@ -49,6 +49,11 @@ export interface VpcMadProps {
    * @default - 'Randomly generated'.
    */
   vpc?: ec2.IVpc;
+  /**
+   * Define the maximum number of AZs to use in this region.
+   * @default - '2'.
+   */
+  maxAzs?: number;
 }
 export class VpcMad extends Construct {
   readonly secret: secretsmanager.ISecret;
@@ -56,15 +61,16 @@ export class VpcMad extends Construct {
   readonly CfnDHCPOptions: ec2.CfnDHCPOptions;
   readonly vpc: ec2.IVpc;
 
-  constructor(scope: Construct, id = 'aws-vpc-mad', props: VpcMadProps) {
+  constructor(scope: Construct, id = 'madStack', props: VpcMadProps) {
     super(scope, id);
     props.domainName = props.domainName ?? 'domain.aws';
     props.edition = props.edition ?? 'Standard';
-    this.vpc = props.vpc ?? new ec2.Vpc(this, id + '-VPC', { maxAzs: 2 });
+    props.maxAzs = props.maxAzs ?? 2;
+    this.vpc = props.vpc ?? new ec2.Vpc(this, id + '-vpc', { maxAzs: props.maxAzs });
 
     this.secret =
       props.secret ??
-      new secretsmanager.Secret(this, id + '-Secret', {
+      new secretsmanager.Secret(this, `${id}-${props.domainName}-secret`, {
         generateSecretString: {
           secretStringTemplate: JSON.stringify({
             Domain: props.domainName,
@@ -80,11 +86,11 @@ export class VpcMad extends Construct {
       subnetType: ec2.SubnetType.PRIVATE_WITH_NAT,
     });
 
-    new CfnOutput(this, '_SSM_GetSecret_', {
-      value: `aws secretsmanager get-secret-value --secret-id ${this.secret.secretArn} --query SecretString --output text`,
+    new CfnOutput(this, id + '-SSM-GetSecret', {
+      value: `aws secretsmanager get-secret-value --secret-id ${this.secret.secretArn} --query SecretString --output text --region ${'region'}`, //need to fix the region
     });
 
-    this.ad = new mad.CfnMicrosoftAD(this, id + '-Mad', {
+    this.ad = new mad.CfnMicrosoftAD(this, id + '-managedDirectoryObject', {
       password: this.secret.secretValueFromJson('Password').toString(),
       edition: props.edition,
       name: props.domainName,
@@ -94,13 +100,13 @@ export class VpcMad extends Construct {
       },
     });
 
-    const sg = new ec2.SecurityGroup(this, id + 'OutboundResolverSG', {
+    const sg = new ec2.SecurityGroup(this, id + '-r53-outbound-Resolver-SG', {
       vpc: this.vpc,
     });
     sg.addIngressRule(ec2.Peer.ipv4(this.vpc.vpcCidrBlock), ec2.Port.udp(53));
     sg.addIngressRule(ec2.Peer.ipv4(this.vpc.vpcCidrBlock), ec2.Port.tcp(53));
 
-    const outBoundResolver = new r53resolver.CfnResolverEndpoint(this, 'endpoint', {
+    const outBoundResolver = new r53resolver.CfnResolverEndpoint(this, id + '-r53-endpoint', {
       direction: 'OUTBOUND',
       ipAddresses: subnets.subnetIds.map((s) => {
         return { subnetId: s };
@@ -108,14 +114,14 @@ export class VpcMad extends Construct {
       securityGroupIds: [sg.securityGroupId],
     });
 
-    const resolverRules = new r53resolver.CfnResolverRule(this, 'rules', {
+    const resolverRules = new r53resolver.CfnResolverRule(this, id + '-r53-resolver-rules', {
       domainName: props.domainName,
       resolverEndpointId: outBoundResolver.ref,
       ruleType: 'FORWARD',
       targetIps: [{ ip: Fn.select(0, this.ad.attrDnsIpAddresses) }, { ip: Fn.select(1, this.ad.attrDnsIpAddresses) }],
     });
 
-    new r53resolver.CfnResolverRuleAssociation(this, 'assoc', {
+    new r53resolver.CfnResolverRuleAssociation(this, id + '-r53-resolver-association', {
       resolverRuleId: resolverRules.attrResolverRuleId,
       vpcId: this.vpc.vpcId,
     });

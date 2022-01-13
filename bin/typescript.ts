@@ -1,67 +1,66 @@
 #!/usr/bin/env node
 import { Construct } from 'constructs';
-import { App, aws_ec2, Stack, StackProps } from 'aws-cdk-lib';
-import { aws_iam as iam } from 'aws-cdk-lib';
+import { App, aws_iam, Stack, StackProps } from 'aws-cdk-lib';
 
-import { WindowsEKSCluster } from '../lib/eks_cluster_infrastructure';
-import { WindowsEKSNodes } from '../lib/windows_eks_nodes';
 import { WindowsFSxMad } from '../lib/aws-vpc-windows-fsx-mad';
-import { WindowsWorker } from '../lib/windows_worker';
+import { WindowsNode } from '../lib/windows-node';
+import * as fs from 'fs';
 
 export class ExampleApp extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // Step 1
-    const vpc_infrastructure = new WindowsFSxMad(this, 'Main-Infra', {
-      fsxSize: 200,
+    const vpc_infrastructure = new WindowsFSxMad(this, 'infraStack', {
+      fsxSize: 2000,
       fsxMbps: 128,
       multiAZ: true,
       fsxInPrivateSubnet: true,
-      domainName: 'windowsoneks.aws',
+      domainName: 'rdsfarm.aws',
     });
 
-    // Step 2
-    const eks_infra = new WindowsEKSCluster(this, 'EKS-Stack', vpc_infrastructure);
+    const UserData = fs.readFileSync('./lib/userData.ps1', { encoding: 'utf8', flag: 'r' });
 
-    // Step 3
-    const windows_worker = new WindowsWorker(this, 'WindowsWorker', {
+    const node1 = new WindowsNode(this, 'HyperV-node1', {
+      secret: vpc_infrastructure.secret, // domain join with userData script
       vpc: vpc_infrastructure.vpc,
-      madObject: vpc_infrastructure.ad,
+      AMIName: 'Windows_Server-2019-English-Full-HyperV*',
+      usePrivateSubnet: false,
       iamManagedPoliciesList: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMDirectoryServiceAccess'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'),
+        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
+        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'),
       ],
+      InstanceType: 'z1d.metal',
+      userData: UserData,
     });
 
-    // Kubernetes 1.21 kubectl
-    windows_worker.runPsCommands(
-      [
-        `aws eks update-kubeconfig --name ${eks_infra.ekscluster.clusterName} --region ${process.env.CDK_DEFAULT_REGION}`,
-        'mkdir c:\\kubectl',
-        'wget -O C:\\kubectl\\kubectl.exe https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/windows/amd64/kubectl.exe',
-        '$env:Path += ";C:\\kubectl"',
+    const node2 = new WindowsNode(this, 'HyperV-node2', {
+      secret: vpc_infrastructure.secret, // domain join with userData script
+      vpc: vpc_infrastructure.vpc,
+      AMIName: 'Windows_Server-2019-English-Full-HyperV*',
+      usePrivateSubnet: false,
+      iamManagedPoliciesList: [
+        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
+        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'),
       ],
-      'installKubectl',
-    );
+      InstanceType: 'z1d.metal',
+      userData: UserData,
+    });
 
-    eks_infra.ekscluster.awsAuth.addMastersRole(windows_worker.worker_role);
-    eks_infra.ekscluster.connections.allowFrom(windows_worker.worker, aws_ec2.Port.tcp(443));
-    windows_worker.openRDP('83.130.43.230/32');
+    // node1.openRDP('83.130.43.230/32');
+    // node1.openRDP('82.2.172.26/32');
+    // node1.openRDP('90.50.223.60/32');
 
-    // Note: Please enable windows support and create folder in the FSx filesystem before deploying the Nodes.
-
-    const windows_nodes = new WindowsEKSNodes(this, 'Windows-Nodes-Stack', vpc_infrastructure, eks_infra);
+    node2.openRDP('83.130.43.230/32');
+    node2.openRDP('82.2.172.26/32');
+    node2.openRDP('90.50.223.60/32');
   }
 }
 
-const app = new App();
-const cdk_props: StackProps = {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
-  },
-};
+const dudut_Isengard_USEast = { account: '117923233529', region: 'us-east-1' };
+const dudut_Isengard_Dublin = { account: '117923233529', region: 'eu-west-1' };
 
-new ExampleApp(app, 'myApp01', cdk_props);
+const app = new App();
+
+new ExampleApp(app, 'RDSFarm', {
+  env: dudut_Isengard_Dublin,
+});

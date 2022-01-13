@@ -13,7 +13,7 @@
 
 // Imports
 import { Construct } from 'constructs';
-import { aws_fsx as fsx, aws_ec2 as ec2, CfnOutput } from 'aws-cdk-lib';
+import { aws_fsx as fsx, aws_ec2 as ec2 } from 'aws-cdk-lib';
 import { VpcMad, VpcMadProps } from './aws-vpc-mad';
 
 /**
@@ -48,7 +48,7 @@ export interface WindowsFSxMadProps extends VpcMadProps {
 
 export class WindowsFSxMad extends VpcMad {
   readonly fsx: fsx.CfnFileSystem;
-  constructor(scope: Construct, id: string = 'aws-vpc-mad-fsx', props: WindowsFSxMadProps) {
+  constructor(scope: Construct, id: string = 'fsxMadStack', props: WindowsFSxMadProps) {
     super(scope, id, props);
     props.fsxInPrivateSubnet = props.fsxInPrivateSubnet ?? true;
     props.fsxMbps = props.fsxMbps ?? 128;
@@ -66,9 +66,11 @@ export class WindowsFSxMad extends VpcMad {
       preferredSubnetId: props.multiAZ ? subnets[0] : undefined,
     };
 
-    const sg = new ec2.SecurityGroup(this, id + 'FSxSG', {
+    const sg = new ec2.SecurityGroup(this, id + '-FSxSG', {
       vpc: this.vpc,
     });
+
+    // Allow access from inside the VPC
     sg.addIngressRule(ec2.Peer.ipv4(this.vpc.vpcCidrBlock), ec2.Port.allTcp());
 
     const fsx_props: fsx.CfnFileSystemProps = {
@@ -79,6 +81,6 @@ export class WindowsFSxMad extends VpcMad {
       securityGroupIds: [sg.securityGroupId],
     };
 
-    this.fsx = new fsx.CfnFileSystem(this, (id = 'FSx'), fsx_props);
+    this.fsx = new fsx.CfnFileSystem(this, (id = id + '-FSxObject'), fsx_props);
   }
 }
