@@ -30,3 +30,4 @@ Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Rebuild Page
 
 ## Domain settings
 Install-WindowsFeature -Name "RSAT-AD-PowerShell" -IncludeAllSubFeature
+Install-WindowsFeature –Name "Failover-Clustering"–IncludeManagementTools

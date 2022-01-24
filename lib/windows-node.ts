@@ -150,13 +150,12 @@ export class WindowsNode extends Construct {
       '$SecretObj = Get-SECSecretValue -SecretId $SecretAD',
       '[PSCustomObject]$Secret = ($SecretObj.SecretString  | ConvertFrom-Json)',
       '$password   = $Secret.Password | ConvertTo-SecureString -asPlainText -Force',
-      "$username   = $Secret.UserID + '@' + $Secret.Domain",
+      " $username   = $Secret.Domain + '\\' + $Secret.UserID ",
       '$domain_admin_credential = New-Object System.Management.Automation.PSCredential($username,$password)',
-      '$Session    = New-PSSession -Credential $domain_admin_credential',
       'New-Item -ItemType Directory -Path c:\\Scripts',
       '$tempScriptPath = "C:\\Scripts\\$PID.ps1"',
       '$oneTimePS | set-content $tempScriptPath',
-      'Start-Process Powershell -Argumentlist "-ExecutionPolicy Bypass -NoProfile -File C:\\Scripts\\$PID.ps1" -Verb RunAs;',
+      'Start-Process Powershell -Argumentlist "-ExecutionPolicy Bypass -NoProfile -File C:\\Scripts\\$PID.ps1" -Credential $domain_admin_credential',
       'Remove-Item $tempScriptPath',
     );
     new ssm.CfnAssociation(this, id, {
