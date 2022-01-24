@@ -140,7 +140,7 @@ export class WindowsNode extends Construct {
   }
 
   runPSwithDomainAdmin(psCommands: string[], secret: aws_secretsmanager.ISecret, id: string) {
-    var commands = ['$onTimePS = {'];
+    var commands = ['$oneTimePS = {'];
     psCommands.forEach((command: string) => {
       commands.push(command);
     });
@@ -152,13 +152,12 @@ export class WindowsNode extends Construct {
       '$password   = $Secret.Password | ConvertTo-SecureString -asPlainText -Force',
       "$username   = $Secret.UserID + '@' + $Secret.Domain",
       '$domain_admin_credential = New-Object System.Management.Automation.PSCredential($username,$password)',
+      '$Session    = New-PSSession -Credential $domain_admin_credential',
       'New-Item -ItemType Directory -Path c:\\Scripts',
-      '$onTimePS | set-content c:\\Scripts\\onTimePS.ps1',
-      '# Create a scheduled task to run now with domain user',
-      "$action = New-ScheduledTaskAction -Execute 'Powershell.exe' -Argument 'c:\\scripts\\onTimePS.ps1'",
-      '$trigger =  New-ScheduledTaskTrigger -Once -At (Get-Date)',
-      "Register-ScheduledTask -Action $action -Trigger $trigger -TaskName 'PSTaskOnce' -Description 'Workaround to run with domain user' -RunLevel Highest -User $username -Password $Secret.Password",
-      '',
+      '$tempScriptPath = "C:\\Scripts\\$PID.ps1"',
+      '$oneTimePS | set-content $tempScriptPath',
+      'Start-Process Powershell -Argumentlist "-ExecutionPolicy Bypass -NoProfile -File C:\\Scripts\\$PID.ps1" -Verb RunAs;',
+      'Remove-Item $tempScriptPath',
     );
     new ssm.CfnAssociation(this, id, {
       name: 'AWS-RunPowerShellScript',

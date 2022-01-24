@@ -1,11 +1,11 @@
 # Create a startup script to handle NVMe refresh on start/stop instance
 $bootfix = {
     if (!(Get-Volume -DriveLetter E)) {
-        #Create pool and virtual disk for TempDB using mirroring with NVMe
+        #Create pool and virtual disk for PageFile using mirroring with NVMe
         $NVMe = Get-PhysicalDisk | ? { $_.CanPool -eq $True -and $_.FriendlyName -eq "NVMe Amazon EC2 NVMe"}
-        New-StoragePool –FriendlyName TempDBPool –StorageSubsystemFriendlyName "Windows Storage*" –PhysicalDisks $NVMe
-        New-VirtualDisk -StoragePoolFriendlyName TempDBPool -FriendlyName TempDBDisk -ResiliencySettingName simple -ProvisioningType Fixed -UseMaximumSize
-        Get-VirtualDisk –FriendlyName TempDBDisk | Get-Disk | Initialize-Disk –Passthru | New-Partition –DriveLetter E –UseMaximumSize | Format-Volume -FileSystem ReFS -AllocationUnitSize 65536 -NewFileSystemLabel TempDBfiles -Confirm:$false
+        New-StoragePool –FriendlyName PageFilePool –StorageSubsystemFriendlyName "Windows Storage*" –PhysicalDisks $NVMe
+        New-VirtualDisk -StoragePoolFriendlyName PageFilePool -FriendlyName PageFilePool -ResiliencySettingName mirror -ProvisioningType Fixed -UseMaximumSize
+        Get-VirtualDisk –FriendlyName PageFilePool | Get-Disk | Initialize-Disk –Passthru | New-Partition –DriveLetter E –UseMaximumSize | Format-Volume -FileSystem ReFS -AllocationUnitSize 65536 -NewFileSystemLabel PageFile -Confirm:$false
 
         #grant Everyone full access to the new drive
         $item = gi -literalpath "E:\"
